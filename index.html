@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Examen - Sistemas Operativos en Red</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #0056b3;
+        }
+        .info {
+            background-color: #e9f5ff;
+            padding: 15px;
+            border-left: 5px solid #0056b3;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        .question-block {
+            margin-bottom: 25px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #fafafa;
+        }
+        .question-text {
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-bottom: 15px;
+        }
+        .options-list {
+            list-style-type: none;
+            padding: 0;
+        }
+        .options-list li {
+            margin-bottom: 10px;
+        }
+        label {
+            cursor: pointer;
+            display: block;
+            padding: 8px;
+            border-radius: 5px;
+            transition: background 0.2s;
+        }
+        label:hover {
+            background-color: #e2e2e2;
+        }
+        .btn {
+            display: inline-block;
+            background-color: #0056b3;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            font-size: 1.1em;
+            cursor: pointer;
+            margin-top: 20px;
+            text-align: center;
+        }
+        .btn:hover {
+            background-color: #004494;
+        }
+        .explanation {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 5px;
+            display: none;
+            font-size: 0.95em;
+        }
+        .correct-answer .explanation {
+            display: block;
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .wrong-answer .explanation {
+            display: block;
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .highlight-correct {
+            background-color: #d4edda !important;
+            font-weight: bold;
+        }
+        .highlight-wrong {
+            background-color: #f8d7da !important;
+            text-decoration: line-through;
+        }
+        #score-container {
+            font-size: 1.5em;
+            font-weight: bold;
+            text-align: center;
+            margin-top: 20px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Simulador de Examen: Windows Server y AD DS</h1>
+    <div class="info">Se seleccionarán 40 preguntas aleatorias de un banco de 81 preguntas. ¡Suerte en tu examen!</div>
+    
+    <div id="quiz-container"></div>
+    
+    <button class="btn" id="submit-btn" onclick="corregirTest()">Corregir Examen</button>
+    <div id="score-container"></div>
+    <button class="btn" id="restart-btn" onclick="iniciarTest()" style="display: none; width: 100%;">Reiniciar con nuevas preguntas</button>
+</div>
+
+<script>
+// Banco de 81 preguntas extraídas de los documentos
+const bancoDePreguntas = [
+    { q: "¿Qué característica de la arquitectura cliente/servidor indica que el usuario no necesita conocer los detalles internos ni la ubicación física del recurso?", o: ["Transparencia", "Independencia", "Escalabilidad", "Encapsulamiento"], a: 0, e: "La transparencia significa que el usuario no necesita conocer todos los detalles internos ni la ubicación física del recurso, como al abrir una carpeta compartida por su nombre." },
+    { q: "¿Qué significa que el sistema tenga un 'acoplamiento débil'?", o: ["Cliente y servidor cooperan mediante mensajes y pueden evolucionar por separado.", "Todos los componentes deben usar el mismo hardware.", "El sistema solo crece si se apaga el servidor.", "El cliente accede directamente a la base de datos."], a: 0, e: "El acoplamiento débil implica que el cliente y el servidor cooperan mediante mensajes y pueden evolucionar por separado, permitiendo cambiar el servidor sin rediseñar el cliente.[cite: 1]" },
+    { q: "¿Qué rol asume un proceso que escucha y atiende solicitudes en una arquitectura de red?", o: ["Cliente", "Middleware", "Servidor", "Front-end"], a: 2, e: "El Servidor es el proceso que escucha y atiende solicitudes.[cite: 1]" },
+    { q: "¿Qué comprende el Middleware?", o: ["Solo el hardware del servidor.", "El sistema de archivos local.", "Software que facilita la comunicación e integración (red + protocolos + API).", "Las políticas de usuario."], a: 2, e: "El Middleware es el software que facilita la comunicación e integración entre componentes e incluye red, protocolos y API.[cite: 1]" },
+    { q: "¿Qué nivel de arquitectura retiene la responsabilidad de aplicar reglas, permisos y lógica del servicio?", o: ["Presentación", "Comunicación", "Datos", "Aplicación"], a: 3, e: "El nivel de Aplicación aplica reglas, permisos y lógica del servicio.[cite: 1]" },
+    { q: "¿Qué debe controlar fundamentalmente un servidor de bases de datos?", o: ["Identidad, espacio y copias.", "Concurrencia, transacciones y privilegios.", "Cola, prioridad y cuota.", "Certificados, sesiones y rendimiento."], a: 1, e: "Un servidor de bases de datos consulta y modifica datos estructurados, y debe controlar concurrencia, transacciones y privilegios.[cite: 1]" },
+    { q: "¿Qué nivel de arquitectura transporta mensajes usando direcciones, puertos y protocolos?", o: ["Aplicación", "Presentación", "Comunicación", "Datos"], a: 2, e: "El nivel de Comunicación transporta mensajes usando direcciones, puertos y protocolos.[cite: 1]" },
+    { q: "Si la interfaz no recibe correctamente los datos del usuario, ¿qué nivel está fallando?", o: ["Datos", "Aplicación", "Comunicación", "Presentación"], a: 3, e: "La pregunta '¿La interfaz recibe correctamente los datos del usuario?' localiza un fallo en el nivel de Presentación.[cite: 1]" },
+    { q: "¿Qué RAM mínima se indica comercialmente para Windows Server 2025 para Experiencia de escritorio?", o: ["512 MB", "2 GB", "4 GB", "8 GB"], a: 1, e: "Se exigen 2 GB mínimos, aunque se recomiendan 4 GB para Experiencia de escritorio.[cite: 2]" },
+    { q: "¿Cuál es la propuesta de aula para crear la VM con Windows Server 2025?", o: ["1 vCPU, 2 GB RAM, 32 GB sistema.", "4 vCPU, 8 GB RAM, 120 GB sistema.", "2 vCPU, 4-6 GB RAM y 64 GB de sistema.", "No usa disco dinámico, usa almacenamiento en red."], a: 2, e: "La propuesta de aula para Windows Server 2025 establece 2 vCPU, 4-6 GB RAM y 64 GB de sistema.[cite: 2]" },
+    { q: "¿Qué edición de Windows Server está pensada para entornos muy virtualizados y centros de datos?", o: ["Standard", "Datacenter", "Essentials", "Azure Edition"], a: 1, e: "La edición Datacenter incluye capacidades avanzadas y amplios derechos de virtualización orientados a centros de datos.[cite: 2]" },
+    { q: "¿Se puede convertir un Windows Server moderno de Server Core a Experiencia de escritorio después de la instalación?", o: ["Sí, usando PowerShell.", "Sí, pero requiere reinicios múltiples.", "No, no debe planificarse una conversión posterior; se elige durante la instalación.", "Sí, pagando una licencia adicional."], a: 2, e: "En Windows Server moderno no debe planificarse una conversión posterior entre Core y Experiencia de escritorio; se toma la decisión antes de instalar.[cite: 2]" },
+    { q: "¿Qué sistema de archivos es general y obligatorio para el volumen de arranque de Windows?", o: ["ReFS", "NTFS", "ext4", "FAT32"], a: 1, e: "NTFS es el sistema de archivos general y de arranque de Windows.[cite: 2]" },
+    { q: "¿Qué hipervisor se utiliza en la configuración de aula para la máquina virtual SRV01-AOLA18?", o: ["VMware ESXi", "Hyper-V", "VirtualBox", "QEMU/KVM con virt-manager"], a: 3, e: "El reporte de sistema indica que el sistema anfitrión usa QEMU/KVM con virt-manager.[cite: 6]" },
+    { q: "Según el reporte PowerShell del estudiante, ¿qué versión o 'OsBuildNumber' se está usando para el servidor?", o: ["Build 22H2", "Build 26100", "Build 19045", "Build 10240"], a: 1, e: "El OsBuildNumber indicado en el reporte del estudiante es 26100 para Windows Server 2025.[cite: 3]" },
+    { q: "¿Qué dirección IPv4 tiene el servidor SRV01-AOLA18 en su interfaz Ethernet interna?", o: ["10.0.2.15", "192.168.100.10", "192.168.100.20", "127.0.0.1"], a: 1, e: "El servidor SRV01-AOLA18 cuenta con la IPv4 192.168.100.10.[cite: 3, 6]" },
+    { q: "En el hito 3, ¿por qué los equipos en la red aislada SOR-LAB no deben configurar una puerta de enlace (Gateway)?", o: ["Porque Windows lo bloquea por seguridad.", "Porque están en la misma subred /24 aislada y no necesitan salir a otras redes.", "Porque usan IPv6 exclusivamente.", "Porque requieren un router BGP."], a: 1, e: "No se configura puerta de enlace si los equipos están en la misma subred /24 aislada y no necesitan salir a otras redes.[cite: 5, 6]" },
+    { q: "En el hito 3, ¿por qué el servidor no tiene configurado ningún servidor DNS en su tarjeta interna?", o: ["Porque el servicio DNS aún no está instalado internamente y la prueba es solo por IP.", "Porque usa el DNS 8.8.8.8 obligatoriamente.", "Porque un fallo en el hipervisor borra el DNS.", "Porque la red se autoconfigura por APIPA."], a: 0, e: "No se configura DNS hasta que el servicio esté instalado y configurado internamente en el controlador.[cite: 5, 6]" },
+    { q: "¿Qué estructura lógica de Active Directory representa un límite de seguridad supremo y agrupa dominios que comparten esquema?", o: ["Bosque (Forest)", "Árbol (Tree)", "Unidad Organizativa (UO)", "Sitio"], a: 0, e: "El Bosque es el límite de seguridad supremo y agrupa uno o más dominios que comparten esquema, configuración y catálogo.[cite: 4, 5]" },
+    { q: "¿Para qué sirve principalmente una Unidad Organizativa (UO)?", o: ["Para asignar permisos de red como grupo de seguridad.", "Para organizar contenedores de archivos físicos.", "Para delegar administración y aplicar GPO (directivas de grupo).", "Para hospedar los roles FSMO del dominio."], a: 2, e: "La UO se diseña para organizar objetos, delegar la administración y aplicar directivas GPO; no es un grupo de seguridad ni un departamento por obligación.[cite: 4, 5]" },
+    { q: "¿Cuál de los siguientes es un rol FSMO a nivel de Bosque?", o: ["Maestro RID", "Emulador PDC", "Maestro de Esquema", "Maestro de Infraestructura"], a: 2, e: "A nivel de bosque existen el Maestro de esquema y el Maestro de nombres de dominio.[cite: 4, 5]" },
+    { q: "¿Qué comando sirve para identificar el servidor que ostenta los 5 roles FSMO en PowerShell / CMD?", o: ["Get-ADDomainController", "netdom query fsmo", "Get-ADForest", "dcdiag /test:dns"], a: 1, e: "El comando 'netdom query fsmo' permite identificar qué servidor ostenta los 5 roles FSMO.[cite: 4, 5]" },
+    { q: "¿De qué servicio depende estrictamente Active Directory (AD DS) para funcionar?", o: ["Servidor de Impresión", "WINS", "DHCP", "DNS"], a: 3, e: "Active Directory depende estrictamente de DNS para funcionar.[cite: 5]" },
+    { q: "¿Qué registro SRV es esencial que los clientes consulten en el DNS para localizar servidores de autenticación KDC?", o: ["_ldap._tcp", "_kerberos._tcp", "_http._tcp", "_gc._tcp"], a: 1, e: "El registro _kerberos._tcp localiza servidores de autenticación KDC.[cite: 5]" },
+    { q: "¿Qué registro SRV es esencial para localizar los servidores de directorio LDAP?", o: ["_ldap._tcp", "_kdc._tcp", "_sysvol._tcp", "_msdcs._tcp"], a: 0, e: "El registro _ldap._tcp localiza servidores de directorio LDAP.[cite: 5]" },
+    { q: "¿Qué contiene el recurso compartido crítico SYSVOL?", o: ["Los datos de los usuarios del disco D:", "Las directivas de grupo (GPO) y scripts públicos del dominio.", "El esquema de Active Directory completo.", "Las copias de seguridad de Windows."], a: 1, e: "SYSVOL contiene las directivas de grupo (GPO) y scripts públicos del dominio.[cite: 5]" },
+    { q: "¿Por qué es crucial revisar Get-TimeZone y Get-Date en el servidor?", o: ["Para el licenciamiento del software.", "Porque la hora es decorativa en los reportes.", "Porque la autenticación Kerberos depende de una fecha y hora coherentes.", "Porque el sistema se apaga si no está en hora local."], a: 2, e: "Una hora incoherente puede impedir autenticarse posteriormente mediante Kerberos; zona horaria, fecha y hora son cruciales para la autenticación.[cite: 4, 5, 7]" },
+    { q: "¿Qué comando muestra la configuración IP detallada, incluyendo IPv4, gateway, DNS y rutas en PowerShell?", o: ["Get-NetAdapter", "Get-NetIPConfiguration -Detailed", "Get-WmiObject", "ipconfig /renew"], a: 1, e: "El comando Get-NetIPConfiguration -Detailed muestra la configuración IP detallada.[cite: 5, 7]" },
+    { q: "¿Qué comando lista adaptadores físicos o virtuales, su estado y dirección MAC?", o: ["Get-NetIPAddress", "Get-NetAdapter", "Get-NetRoute", "Test-Connection"], a: 1, e: "Get-NetAdapter lista los adaptadores, su estado y dirección MAC.[cite: 5, 7]" },
+    { q: "Si al configurar el cliente en el hito 4 le asignamos un DNS público (como 8.8.8.8) en lugar de la IP de nuestro DC, ¿qué ocurrirá?", o: ["El sistema navegará más rápido.", "El dominio puede no localizar sus registros internos SRV, causando fallos de AD.", "Windows corregirá el error automáticamente al reiniciar.", "El servidor asumirá el rol de router."], a: 1, e: "Configurar un DNS público impedirá que el cliente localice los registros SRV internos del Active Directory.[cite: 5, 7]" },
+    { q: "¿Qué función cumple el comando Test-Connection en PowerShell?", o: ["Resolver nombres DNS a la fuerza.", "Formatear un disco remoto.", "Prueba conectividad ICMP (equivalente a ping).", "Conectar a una VPN."], a: 2, e: "Test-Connection <IP/Host> -Count 2 prueba la conectividad ICMP, equivalente al clásico ping.[cite: 5, 7]" },
+    { q: "¿Qué estado se espera de los servicios NTDS, DNS, Netlogon y KDC en un controlador de dominio sano?", o: ["Stopped", "Disabled", "Running", "Manual"], a: 2, e: "Se espera que los servicios esenciales como NTDS, DNS, Netlogon y KDC estén en estado 'Running'.[cite: 4]" },
+    { q: "En la comprobación de la creación de un dominio, ¿qué indica la existencia de SYSVOL y NETLOGON?", o: ["Que la base de datos de DNS falló.", "Que las carpetas de recursos compartidos del dominio han sido creadas correctamente tras la promoción.", "Que el servidor requiere una activación de licencia.", "Que los servicios web de IIS están en marcha."], a: 1, e: "La aparición de SYSVOL y NETLOGON es un indicador (nivel 4 de validación) de que los recursos compartidos esenciales del DC operan y se han estabilizado.[cite: 4, 5]" },
+    { q: "¿Qué permite la herramienta administrativa 'Active Directory Sites and Services'?", o: ["Aplicar políticas GPO a usuarios.", "Gestionar la topología física, sitios, subredes y replicación.", "Crear buzones de Exchange.", "Monitorizar el tráfico de DNS."], a: 1, e: "La herramienta Sites and Services gestiona Sitios, subredes y la topología de replicación.[cite: 4]" },
+    { q: "¿Qué ocurre en la instalación de Windows Server si elijo 'Server Core'?", o: ["Tengo un entorno con escritorio y todas las herramientas gráficas locales.", "Instalo el sistema con consola y herramientas limitadas, requiriendo PowerShell y gestión remota.", "Instalo una versión basada en kernel Linux.", "El servidor se configura automáticamente sin intervención humana."], a: 1, e: "Server Core tiene consola y herramientas limitadas, se administra mediante PowerShell, SConfig y remotamente; posee menor huella de recursos.[cite: 2]" },
+    { q: "¿Qué significa el formato UPN (User Principal Name)?", o: ["Un formato tipo DOMINIO\\usuario.", "Un formato de nombre principal con forma de correo (ej. Administrator@empresa.test).", "Un identificador numérico único (SID).", "El nombre físico del equipo anfitrión."], a: 1, e: "El UPN es el Nombre principal con forma de correo, por ejemplo: Administrator@empresa.test.[cite: 4]" },
+    { q: "¿Qué es el DSRM (Directory Services Restore Mode) durante la promoción a controlador de dominio?", o: ["Un rol FSMO.", "Una directiva de grupo.", "Una contraseña de modo de restauración que debe solicitarse de forma segura.", "El protocolo para replicar DNS."], a: 2, e: "DSRM es el Directory Services Restore Mode y exige que se establezca una contraseña segura en la configuración.[cite: 4]" },
+    { q: "¿Qué comando sirve para corregir la etiqueta de volumen y nombrar el disco como DATOS_AOLA18?", o: ["Set-Volume -DriveLetter E -NewFileSystemLabel 'DATOS_AOLA18'", "Format-Disk E -Name 'DATOS'", "Rename-Computer", "Get-Volume -Change"], a: 0, e: "Se usó Set-Volume -DriveLetter E -NewFileSystemLabel 'DATOS_AOLA18' para corregir el nombre en el hito 3.[cite: 6]" },
+    { q: "¿Qué IP tiene el cliente CLI01-AOLA18 según el plan de direccionamiento propuesto en el hito 3?", o: ["192.168.100.10", "192.168.100.20", "10.0.2.15", "10.0.2.20"], a: 1, e: "CLI01-AOLA18 tiene asignada la IPv4 192.168.100.20.[cite: 6]" },
+    { q: "¿Qué edición de Windows Server se usa habitualmente como opción de estudio en laboratorios para comparar capacidades completas sin restricciones de roles AD DS?", o: ["Standard o Datacenter (Evaluation)", "Windows 11 Home", "Windows Server Essentials OEM", "Azure Edition"], a: 0, e: "Se utilizan Standard (opción suficiente) o Datacenter si se quieren comprobar funciones avanzadas en laboratorio, en sus ediciones Evaluation.[cite: 2]" },
+    { q: "¿Qué problema genera en el diagnóstico un reporte que dice simplemente 'No funciona'?", o: ["Ninguno, el profesor lo entiende.", "Falta el comando, la salida relevante, la interpretación y la corrección.", "Solo falta enviar el registro de eventos.", "Es preferible enviar una captura sin texto."], a: 1, e: "La regla de diagnóstico indica que se registra el comando, la salida relevante, la interpretación y la corrección. 'No funciona' no es un diagnóstico.[cite: 4]" },
+    { q: "¿Qué comando consulta la zona DNS y registros para verificar la salud del DC?", o: ["dcdiag /test:dns", "Get-NetRoute", "Get-ComputerInfo", "Format-Volume"], a: 0, e: "dcdiag /test:dns es la herramienta de diagnóstico de salud de DNS en el Controlador de Dominio.[cite: 4, 5]" },
+    { q: "¿Qué ocurre con el adaptador NAT (Ethernet 2) al momento de promover AD DS?", o: ["Debe configurarse como Gateway por defecto.", "Debe deshabilitarse temporalmente para evitar registros y resolución más difíciles de interpretar.", "Debe configurarse con IP estática interna.", "Asume el rol de DNS público."], a: 1, e: "Se aconseja deshabilitar NAT antes de la promoción para no ensuciar el DNS con IPs externas.[cite: 7]" },
+    { q: "¿Qué indica la presencia de 'ReFS' frente a 'NTFS'?", o: ["NTFS no soporta Windows Server 2025.", "ReFS está orientado a integridad, disponibilidad y escala de datos; NTFS es general y de arranque.", "ReFS es obligatorio para la unidad C:.", "NTFS es un formato solo de lectura."], a: 1, e: "ReFS es un sistema de archivos orientado a integridad, disponibilidad y escala, mientras que NTFS es el sistema general y de arranque de Windows.[cite: 2]" },
+    { q: "¿Por qué hacer ping a '192.168.50.100' NO demuestra que el DNS funciona?", o: ["Porque ping usa TCP.", "Porque un ping a IP comprueba conectividad IP, pero DNS requiere resolución de nombres (ej. ping al nombre del servidor).", "Porque 192.168 es IP privada.", "Porque DNS solo responde por IPv6."], a: 1, e: "DNS no es conectividad IP. Un ping a la IP comprueba conectividad, pero no añade resolución de nombres.[cite: 7]" },
+    { q: "¿Qué comando de PowerShell muestra las direcciones IPv4 asignadas para detectar si hay configuración duplicada?", o: ["Get-NetAdapter", "Get-NetRoute", "Get-NetIPAddress", "Test-Connection"], a: 2, e: "Get-NetIPAddress muestra las direcciones por interfaz y sirve para detectar duplicados o IP automáticas (APIPA).[cite: 7]" },
+    { q: "¿Cuál es el prefijo de red de la IP 192.168.100.10 propuesto en el hito 3?", o: ["/8", "/16", "/24", "/32"], a: 2, e: "El prefijo es /24 (255.255.255.0).[cite: 6]" },
+    { q: "¿Qué indica un acoplamiento débil en la arquitectura cliente/servidor?", o: ["Que el servidor debe reiniciarse cada hora.", "Que cliente y servidor cooperan mediante mensajes y pueden evolucionar por separado.", "Que usan el mismo sistema operativo siempre.", "Que la red falla continuamente."], a: 1, e: "Acoplamiento débil: Cliente y servidor cooperan mediante mensajes y pueden evolucionar por separado.[cite: 1]" },
+    { q: "¿Cuál de estos componentes representa el middleware?", o: ["Navegador web", "Disco duro", "Red + protocolos + API", "Base de datos"], a: 2, e: "Middleware incluye red, protocolos y API.[cite: 1]" },
+    { q: "¿Qué se debe verificar si la promoción de Active Directory no inicia (preflight error)?", o: ["La velocidad del disco duro.", "Nombre de host, IP estática, hora, permisos y prerrequisitos.", "El modelo de procesador del cliente.", "La dirección MAC del adaptador NAT."], a: 1, e: "Se debe verificar el preflight: Nombre, IP estática, hora, permisos y prerrequisitos.[cite: 4]" },
+    { q: "Si no aparecen las consolas de AD en el menú inicio tras promover, ¿cuál es la solución?", o: ["Añadir 'management tools' (herramientas de administración).", "Comprar otra licencia Datacenter.", "Reiniciar el cliente CLI01.", "Desinstalar el rol DNS."], a: 0, e: "Se debe añadir o instalar el paquete de management tools (Herramientas de administración).[cite: 4]" },
+    { q: "¿Qué propiedad nos confirma quién es el servidor DNS primario asignado en un adaptador Windows?", o: ["DNSServer en Get-NetIPConfiguration.", "HealthStatus del disco.", "MacAddress de Get-NetAdapter.", "La ruta 0.0.0.0 de Get-NetRoute."], a: 0, e: "Get-NetIPConfiguration detalla qué DNSServer está configurado en la interfaz.[cite: 3, 5, 7]" },
+    { q: "¿Qué comando exporta el diseño de Active Directory a un script automatizable al finalizar el asistente de instalación?", o: ["No se puede exportar en Windows.", "El botón 'Exportar el script' en la pantalla 'Review Options' del asistente.", "El comando get-adforest -export.", "Se guarda solo en SYSVOL."], a: 1, e: "La pantalla Review Options del asistente permite ver y exportar el guion PowerShell equivalente a las decisiones tomadas.[cite: 4]" },
+    { q: "¿Quién provee los servicios DNS 10.0.2.3 documentados en la interfaz NAT del servidor en el hito 3?", o: ["El servidor mismo.", "Active Directory.", "El hipervisor (QEMU/KVM VirtualBox/NAT red).", "El cliente CLI01."], a: 2, e: "La interfaz NAT recibe configuración IP y DNS (10.0.2.2/3 o similar) automáticamente del servicio del hipervisor.[cite: 3]" },
+    { q: "¿Qué sistema de archivos muestra la unidad de CD-ROM en el servidor normalmente al montar una ISO (aunque no aparezca en el reporte)?", o: ["NTFS", "UDF o CDFS", "ReFS", "exFAT"], a: 1, e: "Aunque el reporte muestra NTFS para C: y E:, una ISO montada típicamente expone UDF o CDFS (conceptual).[cite: 2, 3]" },
+    { q: "Al consultar Get-ADDomain, ¿qué campo indica el nombre NetBIOS del dominio?", o: ["DNSRoot", "NetBIOSName", "PDCEmulator", "SchemaMaster"], a: 1, e: "El campo NetBIOSName devuelve el nombre corto, por ejemplo EMPRESA.[cite: 4]" },
+    { q: "¿Cuál es el 'DomainName' correcto (nombre DNS raíz) para el dominio diseñado en las prácticas?", o: ["EMPRESA", "empresa.test", "empresa.local", "sor.lab"], a: 1, e: "El diseño estipula crear el bosque empresa.test.[cite: 4]" },
+    { q: "¿Qué indica un disco configurado como 'dinámico' o 'thin provisioned' en el hipervisor?", o: ["Archivo que reserva el 100% de espacio inicial.", "Archivo de disco virtual que ocupa espacio físico conforme se escribe.", "Un disco en la nube.", "Un disco solo de lectura."], a: 1, e: "Un disco dinámico (virtual) es un archivo que ocupa espacio conforme se escribe internamente en él.[cite: 2]" },
+    { q: "¿A qué rol (cliente o servidor) corresponde la función de 'validar credenciales'?", o: ["Cliente", "Servidor", "Middleware", "Protocolo"], a: 1, e: "El proceso que ofrece una función, como validar credenciales, actúa como servidor.[cite: 1]" },
+    { q: "¿Qué principio explica que una aplicación en un cliente Windows pueda acceder a un servicio Linux sin problema?", o: ["Encapsulamiento", "Integridad", "Escalabilidad", "Independencia"], a: 3, e: "La independencia permite que los componentes usen hardware o sistemas operativos distintos si comparten estándares/protocolos.[cite: 1]" },
+    { q: "¿Qué nivel de arquitectura retiene los datos y garantiza su consistencia?", o: ["Aplicación", "Datos", "Presentación", "Red"], a: 1, e: "El nivel de Datos conserva información y garantiza su consistencia (archivos o bases de datos).[cite: 1]" },
+    { q: "¿Cuál de estos comandos PowerShell detalla explícitamente el tamaño restante de las unidades lógicas?", o: ["Get-Volume", "Get-NetAdapter", "Get-ComputerInfo", "Get-ADForest"], a: 0, e: "Get-Volume (como se ve en el reporte) muestra SizeRemaining, FileSystemType, etc.[cite: 3, 7]" },
+    { q: "¿Qué rol asume el Catálogo Global en una infraestructura multiespacio de Active Directory?", o: ["Resuelve nombres de internet.", "Facilita búsquedas y autenticación con información parcial del bosque.", "Controla la dirección MAC de los clientes.", "Asigna IP dinámicas a los clientes nuevos."], a: 1, e: "El Catálogo global facilita búsquedas y autenticación con información parcial de todos los dominios del bosque.[cite: 4]" },
+    { q: "¿Cuáles son los roles FSMO del dominio que posee un único controlador inicial?", o: ["RID, Emulador PDC y Maestro de infraestructura", "Maestro DNS, Maestro DHCP y Maestro IIS", "SchemaMaster, DNSMaster, ADMaster", "SYSVOL, NETLOGON y NTDS"], a: 0, e: "Los roles a nivel de dominio son RID, Emulador PDC y Maestro de infraestructura.[cite: 4, 5]" },
+    { q: "¿Qué significa que el servidor SRV01 haya sido configurado sin Puerta de enlace en su NIC interna?", o: ["Que no se puede hacer ping a localhost.", "Que solo puede comunicarse con equipos en su misma subred aislada, como el cliente CLI01.", "Que el adaptador está defectuoso.", "Que requiere una licencia Azure para funcionar."], a: 1, e: "Al no tener puerta de enlace, la red interna no enruta tráfico fuera de su propia subred /24.[cite: 5, 6]" },
+    { q: "Si ejecutamos 'Resolve-DnsName -Type SRV _ldap._tcp.dc._msdcs.empresa.test', ¿qué estamos diagnosticando?", o: ["Si el servidor web IIS funciona.", "La resolución del registro SRV de LDAP crítico para Active Directory.", "La conexión a internet del servidor.", "El estado de los discos NTFS."], a: 1, e: "El comando comprueba la resolución DNS del registro SRV de LDAP, sin el cual el directorio activo no es localizable.[cite: 4, 5]" },
+    { q: "¿Qué sistema operativo en red se enfoca en 'Directorio, archivos, impresión, virtualización y aplicaciones Microsoft'?", o: ["Windows Server", "GNU/Linux Server", "UNIX comercial", "macOS Server"], a: 0, e: "Windows Server provee Directorio, archivos, impresión, virtualización y aplicaciones fuertemente integradas de Microsoft.[cite: 2]" },
+    { q: "¿Qué indica un 'HealthStatus' de 'Healthy' y 'OperationalStatus' de 'OK' en el Get-Volume?", o: ["Que el disco está lleno.", "Que el volumen lógico está montado, sano y operando correctamente.", "Que el volumen requiere formateo ReFS.", "Que el disco es un RAID físico."], a: 1, e: "Indica que el volumen se encuentra correctamente creado, formateado y accesible para el sistema.[cite: 3]" },
+    { q: "¿Cuál es la principal ventaja de centralizar recursos según el concepto de Integridad?", o: ["Que la red es inalámbrica.", "Que se facilita mantener una versión coherente de datos y programas para todos.", "Que el servidor se autoconfigura.", "Que el cliente no necesita RAM."], a: 1, e: "La integridad facilita mantener una versión coherente centralizada (ej. todos consultan el mismo inventario).[cite: 1]" },
+    { q: "¿Qué indica la opción de instalación 'Experiencia de escritorio' (Desktop Experience)?", o: ["Gestión por consola únicamente.", "Tener disponible el escritorio clásico y herramientas gráficas (GUI).", "Un modo reservado para programadores Linux.", "Una versión limitada de Windows 11."], a: 1, e: "La experiencia de escritorio provee GUI local y herramientas gráficas completas, facilitando el aprendizaje aunque consuma más RAM.[cite: 2]" },
+    { q: "¿Por qué NO es conveniente un nombre NetBIOS excesivamente largo o con caracteres especiales?", o: ["Porque Active Directory no admite letras.", "Porque el nombre NetBIOS debe ser corto, único y coherente por cuestiones de retrocompatibilidad.", "Porque consume mucha RAM.", "Porque la puerta de enlace fallará."], a: 1, e: "El DomainNetbiosName debe ser corto (típicamente hasta 15 caracteres), único y coherente.[cite: 4]" },
+    { q: "¿Quién inicia la petición en una interacción asimétrica?", o: ["El servidor", "El middleware", "El cliente", "La base de datos"], a: 2, e: "El cliente inicia la petición; el proceso servidor permanece disponible, recibe y responde.[cite: 1]" },
+    { q: "El servidor escucha por el puerto 80 para la web. ¿En qué nivel de resolución situarías 'direcciones, puertos y protocolos'?", o: ["Aplicación", "Presentación", "Comunicación", "Datos"], a: 2, e: "La responsabilidad de transportar usando direcciones, puertos y protocolos pertenece a la capa de Comunicación.[cite: 1]" },
+    { q: "¿Qué se almacena específicamente en la partición de datos de 20 GB creada para el servidor (DATOS_AOLA18)?", o: ["El kernel de Ubuntu.", "Los archivos de instalación .iso.", "Es un volumen de prácticas para datos del estudiante, separado del sistema.", "El catálogo global de AD DS obligatoriamente."], a: 2, e: "El disco 1 dinámico de ~20-40 GB se emplea para practicar la gestión de un volumen de datos separado de la partición del sistema.[cite: 2, 6]" },
+    { q: "En la comprobación cruzada, si el adaptador no muestra la IP 192.168.100.10, ¿qué paso fue omitido?", o: ["Reiniciar todo el hipervisor.", "Aplicar y aceptar los cambios gráficos de la configuración TCP/IPv4.", "Instalar el rol de Hyper-V.", "Configurar el Gateway BGP."], a: 1, e: "Frecuentemente, capturar antes de pulsar Aceptar no aplica los cambios. Hay que aplicar y luego verificar por PowerShell o GUI.[cite: 7]" },
+    { q: "¿Qué arquitectura (conjunto de instrucciones) requiere Windows Server 2025 de base?", o: ["ARM32", "x86 (32 bits)", "x64 a 1,4 GHz", "Itanium"], a: 2, e: "Se requiere arquitectura x64 a 1,4 GHz y extensiones de virtualización si aplica.[cite: 2]" },
+    { q: "¿Qué estado de Windows Defender o Firewall puede dificultar inicialmente las pruebas de Test-Connection (ping) en la red local si no se configura?", o: ["Está apagado por defecto.", "Bloquea tráfico ICMP entrante por defecto en redes públicas/no identificadas.", "Borra las IPs.", "Cambia las direcciones MAC."], a: 1, e: "Las redes 'no identificadas' (como sucede antes de AD DS) suelen aplicar el perfil público del Firewall, que bloquea ping/ICMP entrante si no se permite.[cite: 3, 7]" },
+    { q: "Según las buenas prácticas, ¿cuándo debe unirse el cliente CLI01 al dominio?", o: ["Antes de instalar el sistema operativo.", "En el momento de arrancar la VM por primera vez.", "Solo después de que el DNS esté configurado en el cliente y localice correctamente los registros SRV de SRV01.", "Nunca, se deja en grupo de trabajo."], a: 2, e: "CLI01 permanece fuera hasta que primero se configura su DNS y se comprueba que encuentra a SRV01 y los registros de servicio.[cite: 4]" },
+    { q: "¿Qué rol de FSMO garantiza que no haya identificadores de seguridad duplicados al crear usuarios en un dominio?", o: ["Maestro de Infraestructura", "Maestro RID (Relative ID)", "Emulador PDC", "Maestro de Esquema"], a: 1, e: "El Maestro RID asigna bloques de identificadores relativos para evitar duplicidad de SIDs en el dominio.[cite: 4, 5]" },
+    { q: "¿Qué herramienta usarías para validar el estado completo y diagnóstico del servicio DNS interno de Active Directory?", o: ["Test-Connection", "dcdiag /test:dns", "Get-NetAdapter", "Get-Volume"], a: 1, e: "dcdiag /test:dns ejecuta pruebas específicas para comprobar la integridad del servicio DNS dentro del dominio.[cite: 4, 5]" },
+    { q: "¿En qué influye que la NIC NAT no sea deshabilitada durante la promoción de un Controlador de Dominio?", o: ["Mejora la velocidad a internet de los clientes.", "Ensuciará los registros DNS del dominio con una IP dinámica, complicando la resolución.", "Evita que la máquina arranque.", "Crea un segundo bosque paralelo."], a: 1, e: "Se recomienda deshabilitar la NIC con NAT antes de promover para evitar que AD DS registre la IP NAT dinámica en su zona DNS interna.[cite: 7]" }
+];
+
+let preguntasActuales = [];
+
+function iniciarTest() {
+    // Esconder botón de reinicio y resultados si se estaba reiniciando
+    document.getElementById('restart-btn').style.display = 'none';
+    document.getElementById('score-container').innerHTML = '';
+    document.getElementById('submit-btn').style.display = 'inline-block';
+    
+    // Aleatorizar y seleccionar 40 preguntas
+    const bancoMezclado = [...bancoDePreguntas].sort(() => Math.random() - 0.5);
+    preguntasActuales = bancoMezclado.slice(0, 40);
+    
+    const quizContainer = document.getElementById('quiz-container');
+    quizContainer.innerHTML = '';
+    
+    preguntasActuales.forEach((pObj, index) => {
+        // Mezclar las opciones guardando el índice de la correcta original
+        let opcionesConIndice = pObj.o.map((txt, i) => ({ txt, isCorrect: (i === pObj.a) }));
+        opcionesConIndice.sort(() => Math.random() - 0.5);
+        
+        // Guardar nuevo índice correcto para la validación
+        pObj.nuevoCorrecto = opcionesConIndice.findIndex(opt => opt.isCorrect);
+
+        let htmlOpciones = '';
+        opcionesConIndice.forEach((opt, oIndex) => {
+            htmlOpciones += `
+                <li>
+                    <label id="label-q${index}-o${oIndex}">
+                        <input type="radio" name="q${index}" value="${oIndex}"> ${opt.txt}
+                    </label>
+                </li>
+            `;
+        });
+        
+        quizContainer.innerHTML += `
+            <div class="question-block" id="question-block-${index}">
+                <div class="question-text">${index + 1}. ${pObj.q}</div>
+                <ul class="options-list">
+                    ${htmlOpciones}
+                </ul>
+                <div class="explanation" id="exp-q${index}">${pObj.e}</div>
+            </div>
+        `;
+    });
+}
+
+function corregirTest() {
+    let score = 0;
+    
+    preguntasActuales.forEach((pObj, index) => {
+        const opciones = document.getElementsByName(`q${index}`);
+        let respondido = false;
+        
+        // Revisar qué marcó el usuario
+        for(let i=0; i<opciones.length; i++) {
+            const label = document.getElementById(`label-q${index}-o${i}`);
+            // Quitar estilos previos si se vuelve a corregir
+            label.classList.remove('highlight-correct', 'highlight-wrong');
+            
+            if(opciones[i].checked) {
+                respondido = true;
+                if(parseInt(opciones[i].value) === pObj.nuevoCorrecto) {
+                    score++;
+                    label.classList.add('highlight-correct');
+                    document.getElementById(`question-block-${index}`).classList.add('correct-answer');
+                } else {
+                    label.classList.add('highlight-wrong');
+                    document.getElementById(`question-block-${index}`).classList.add('wrong-answer');
+                }
+            }
+            // Resaltar obligatoriamente la correcta aunque no la haya marcado
+            if (parseInt(opciones[i].value) === pObj.nuevoCorrecto) {
+                label.classList.add('highlight-correct');
+            }
+            opciones[i].disabled = true; // Deshabilitar cambio post-corrección
+        }
+        
+        // Si no contestó, marcarlo como error y mostrar explicación
+        if(!respondido) {
+            document.getElementById(`question-block-${index}`).classList.add('wrong-answer');
+        }
+    });
+    
+    const max = preguntasActuales.length;
+    const nota = ((score / max) * 10).toFixed(2);
+    
+    const scoreText = `
+        <div style="padding: 20px; background: ${nota >= 5 ? '#d4edda' : '#f8d7da'}; color: ${nota >= 5 ? '#155724' : '#721c24'}; border-radius: 8px;">
+            Resultado final: ${score} de ${max} aciertos.<br>
+            Nota equivalente: ${nota} / 10
+        </div>
+    `;
+    
+    document.getElementById('score-container').innerHTML = scoreText;
+    document.getElementById('submit-btn').style.display = 'none';
+    document.getElementById('restart-btn').style.display = 'inline-block';
+}
+
+// Cargar test al iniciar
+window.onload = iniciarTest;
+</script>
+
+</body>
+</html>
